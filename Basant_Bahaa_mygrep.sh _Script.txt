@@ -1,0 +1,198 @@
+#!/bin/bash
+
+DOMAIN="internal.example.com"
+
+#Function to resolve the domain using a given DNS server
+resolve_domain() {
+    local domain=$1
+    local dns_server=$2
+    echo "Resolving $domain using DNS server: $dns_server"
+    dig @$dns_server $domain +short
+}
+
+#To_Verify_DNS_Resolution
+check_dns_resolution() {
+    echo "Verifying DNS resolution..."
+    
+#To_Resolve_domain_using_system_DNS
+    local system_dns=$(grep -E "^nameserver" /etc/resolv.conf | awk '{print $2}')
+    echo "Resolving '$DOMAIN' using system DNS: $system_dns"
+    system_ip=$(resolve_domain $DOMAIN $system_dns)
+    if [ -z "$system_ip" ]; then
+        echo "DNS resolution failed using system DNS."
+    else
+        echo "Resolved '$DOMAIN' using system DNS: $system_ip"
+    fi
+  
+#TO_Resolve_domain_using_Google_DNS
+    echo "Resolving '$DOMAIN' using Google's DNS (8.8.8.8)..."
+    google_ip=$(resolve_domain $DOMAIN "8.8.8.8")
+    
+    if [ -z "$google_ip" ]; then
+        echo "DNS resolution failed using Google's DNS."
+    else
+        echo "Resolved '$DOMAIN' using Google's DNS: $google_ip"
+    fi
+
+    if [ "$system_ip" != "$google_ip" ]; then
+        echo "DNS resolution mismatch between system DNS and Google's DNS."
+        echo "Possible DNS misconfiguration or caching issue."
+    fi
+}
+
+#Diagnose_Service_Reachability
+check_service_reachability() {
+    echo "Diagnosing service reachability..."
+
+    if [ -z "$system_ip" ] || [ -z "$google_ip" ]; then
+        echo "Skipping service check as DNS resolution failed."
+        return
+    fi
+
+    echo "Checking if the web service is reachable on port 80 (HTTP)..."
+    curl --silent --head --fail http://$system_ip:80 > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo "Web service (HTTP) on $system_ip is reachable."
+    else
+        echo "Web service (HTTP) on $system_ip is NOT reachable."
+    fi
+
+    echo "Checking if the web service is reachable on port 443 (HTTPS)..."
+    curl --silent --head --fail https://$system_ip:443 > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo "Web service (HTTPS) on $system_ip is reachable."
+    else
+        echo "Web service (HTTPS) on $system_ip is NOT reachable."
+    fi
+
+    # Check if the service is listening on the specified ports
+    echo "Checking if the service is listening on port 80 or 443..."
+    ss -tuln | grep -E '(:80|:443)' > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo "Service is listening on port 80 or 443."
+    else
+        echo "Service is NOT listening on port 80 or 443. Check if the web server is running."
+    fi
+}
+
+#To_Trace_the_Issue_and_List_All_Possible_Cases
+trace_issues() {
+    echo "Tracing possible issues..."
+    
+    #DNS_Issues
+    echo "Possible Cause 1: DNS resolution issue"
+    echo "Check DNS server in /etc/resolv.conf or external DNS servers like Google's (8.8.8.8)."
+    
+    #Network_Issues
+    echo "Possible Cause 2: Network connectivity issue"
+    echo "Check network routing and firewall configurations."
+    
+	#Host_File_Issues
+    echo "Possible Cause 6: Incorrect entry in /etc/hosts file"
+    echo "Check if there are any conflicting entries in /etc/hosts for $DOMAIN."
+	
+	#Firewall_and_Port_Blocked
+    echo "Possible Cause 4: Firewall or security group blocking port 80 or 443"
+    echo "Check firewall rules to ensure that ports 80 (HTTP) and 443 (HTTPS) are open."
+
+    #Service_Issues
+    echo "Possible Cause 3: Web service not running"
+    echo "Check if the web server (e.g., Apache, Nginx) is running on the server hosting internal.example.com."
+    
+    #Incorrect_IP
+    echo "Possible Cause 5: Web server not listening on correct IP"
+    echo "Check if the web server is bound to the correct IP or interface."
+
+}
+
+#Propose_that_Apply_Fixes
+apply_fixes() {
+    echo "Proposing and applying fixes..."
+    echo "Fix 1: DNS misconfiguration"
+    echo "To resolve DNS issues, you can update the nameservers in /etc/resolv.conf or use a different DNS server."
+    echo "Example command: echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
+    
+    echo "Fix 2: Network issue"
+    echo "Check network interface status with: ifconfig or ip a"
+    echo "Restart network service with: sudo systemctl restart network-manager"
+    
+    echo "Fix 3: Service not running"
+    echo "Check if the web server is running: sudo systemctl status apache2 (or nginx)"
+    echo "Start the web server if not running: sudo systemctl start apache2 (or nginx)"
+    
+    echo "Fix 4: Firewall blocking ports"
+    echo "Check firewall status with: sudo ufw status"
+    echo "Allow HTTP/HTTPS through firewall: sudo ufw allow 80,443/tcp"
+    
+    echo "Fix 5: Web server not binding to correct IP"
+    echo "Check web server's configuration to ensure it's listening on the correct IP/hostname."
+    echo "Example for Apache: sudo nano /etc/apache2/ports.conf (for proper 'Listen' directive)"
+    
+    echo "Fix 6: Incorrect entry in /etc/hosts"
+    echo "Edit /etc/hosts to ensure there's no conflicting entry for $DOMAIN."
+    echo "Example command: sudo nano /etc/hosts"
+}
+
+#To_Run_the_checks
+check_dns_resolution
+check_service_reachability
+trace_issues
+apply_fixes
+
+echo "Troubleshooting completed."
+
+
+Handle arguments::
+#The_Function_to_display_usage_message
+usage() {
+    echo "Usage: $0 [-n] [-v] search_string file"
+    echo "  -n   Show line numbers"
+    echo "  -v   Invert match (show lines that do NOT match the search string)"
+    exit 1
+}
+
+#To_Check_for_missing_arguments
+if [ $# -lt 2 ]; then
+    echo "Error: Missing arguments."
+    usage
+fi
+SHOW_LINE_NUMBERS=0
+INVERT_MATCH=0
+SEARCH_STRING=""
+FILE=""
+while getopts "nv" opt; do
+    case ${opt} in
+        n) SHOW_LINE_NUMBERS=1 ;;
+        v) INVERT_MATCH=1 ;;
+        *) usage ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+#Capture_the_search_string_and_file
+SEARCH_STRING=$1
+FILE=$2
+if [ -z "$SEARCH_STRING" ]; then
+    echo "Error: Missing search string."
+    usage
+fi
+
+if [ ! -f "$FILE" ]; then
+    echo "Error: File '$FILE' not found."
+    exit 1
+fi
+
+if [ $INVERT_MATCH -eq 1 ]; then
+    if [ $SHOW_LINE_NUMBERS -eq 1 ]; then
+        grep -v -n "$SEARCH_STRING" "$FILE"
+    else
+        grep -v "$SEARCH_STRING" "$FILE"
+    fi
+else
+    if [ $SHOW_LINE_NUMBERS -eq 1 ]; then
+        grep -n "$SEARCH_STRING" "$FILE"
+    else
+        grep "$SEARCH_STRING" "$FILE"
+    fi
+fi
+

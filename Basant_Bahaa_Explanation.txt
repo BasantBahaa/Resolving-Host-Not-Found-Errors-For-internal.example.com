@@ -1,0 +1,59 @@
+The Explanation:
+It lists possible causes such as DNS issues, network issues, the service not running, firewall problems, or incorrect host file entries.
+so the script suggests commands and procedures for fixing each identified issue:
+DNS misconfiguration - network issues - service issues - firewall problems - IP address.
+
+To check DNS Resolution for the Domain:
+1- If the DNS resolution fails for the domain internal.example.com, it could indicate that the DNS server is not resolving the domain correctly.
+Using dig
+Command: dig internal.example.com
+
+2- If DNS resolution is working so response with the ANSWER SECTION showing the resolved IP address and If DNS fails, it will be a message like no answer at all.
+Using nslookup:
+Command: nslookup internal.example.com
+
+3- This will show the resolved IP or an error message if DNS fails.
+Using host:
+Command: host internal.example.com
+
+To Compare DNS Results from Different Servers:
+4- If DNS resolution fails from the system’s configured DNS servers (from /etc/resolv.conf), compare the results using an external DNS server like Google’s 8.8.8.8.
+so it will confirm if the issue is with the local DNS server or not.
+Command: dig @8.8.8.8 internal.example.com
+
+5- If Google’s DNS resolves the domain but the system’s DNS server doesn't so the issue is with the local DNS server or DNS configuration.
+
+To check DNS Configuration in /etc/resolv.conf:
+Ensure that the DNS servers listed in /etc/resolv.conf are reachable and properly configured.
+
+6- If the file is empty or points to a non-working DNS server, we can check by using the following command:
+Command: cat /etc/resolv.conf
+
+7- If it is still invalid or unreachable DNS servers, that’s a clear indication that DNS is misconfigured and it might fail due to cached results so I will try flushing DNS cache and testing again.
+
+8- If the local DNS server fails to resolve while an external DNS server (like 8.8.8.8) works, then the issue is with the local DNS server.
+
+9- To check Network Connectivity:
+DNS might fail due to network connectivity issues so if machine cann't reach the DNS server because of network misconfigurations, DNS resolution failures.
+Command: ping -c 4 8.8.8.8
+
+10- If the DNS server is reachable but DNS resolution still fails, the issue is within the DNS service itself.
+Command: dig internal.example.com
+
+11- If this returns a valid IP address, DNS resolution is working.
+Compare DNS with External DNS (Google's 8.8.8.8) and Run the same dig command, but use Google’s DNS:
+Command: dig @8.8.8.8 internal.example.com
+
+12- If Google’s DNS resolves the domain but system’s DNS doesn’t, the issue lies with DNS server or its configuration.
+To check the DNS servers listed:
+Command: cat /etc/resolv.conf
+
+Conclusion:
+By running these steps, I will know if the issue is related to DNS configuration.
+If DNS fails from the system but works with external servers like Google's DNS, the issue is due to DNS misconfiguration or failure in the local DNS infrastructure.
+
+** What part of the script was hardest to implement and why?
+
+Error Handling for Missing Arguments
+Ensuring the script works properly even when the user misses an argument required thorough validation.
+Missing the trigger specific error messages to guide the user and these checks need to be in the right places to avoid confusing results or failures.
